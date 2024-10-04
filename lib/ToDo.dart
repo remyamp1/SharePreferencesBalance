@@ -23,11 +23,13 @@ class _TodoexampleState extends State<Todoexample> {
     super.initState();
     _loadToDoItems();
   }
-  _loadToDoItems() async{
+  _loadToDoItems() async {
+    
+    {
     SharedPreferences prefs =await SharedPreferences.getInstance();
     List<String>? tasks=prefs.getStringList('todoItems');
     List<String>? colors=prefs.getStringList('todoColors');
-     if (tasks ! = null && colors ! = null)  {
+     if (tasks != null && colors != null)  {
 setState(() {
   _todoItems =List.generate(tasks.length, (index){
     return {
@@ -37,15 +39,24 @@ setState(() {
   });
 });
     }
+  }catct (e){
+    print("error loading todo items:$e");
+  }
   }
   _saveToDoItems() async{
+    try{
     SharedPreferences prefs=await SharedPreferences.getInstance();
     List<String> tasks =
     _todoItems.map((item)=>item['task'] as String).toList();
-    List<String> colors =_todoItems.map((item)=>(item['color'] as Color).value.toString())
-    .toList();
-    prefs.setStringList('todoItems', tasks);
-    prefs.setStringList('todoItems', colors);
+    List<String> colors =_todoItems.map((item){
+       final  Color color=item['color']as Color;
+       return color.value.toString();
+    }).toList();
+  await  prefs.setStringList('todoItems', tasks);
+   await prefs.setStringList('todoItems', colors);
+    } catch (e) {
+      print("Error saving todo items:$e");
+    }
   }
   void _addToDoItem(String task){
     if(task.isNotEmpty){
@@ -55,18 +66,13 @@ setState(() {
       _saveToDoItems();
     }
   }
-  void _removeToDoitem(int index){
-    setState(() {
-      _todoItems.removeAt(index);
-    });
-    _saveToDoItems();
-  }
+  
   void _promptAddItem(){
     String newTask="";
     showModalBottomSheet(context: context, 
     builder: (BuildContext context){
       return Container(
-height: 500,
+height: 300,
 width: double.infinity,
 child: Column(
   mainAxisSize: MainAxisSize.min,
@@ -122,23 +128,42 @@ child: Column(
       ),
       body: ListView.builder(itemCount: _todoItems.length,
       itemBuilder: (context,index){
-        return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
+        return Dismissible(key: Key(_todoItems[index]['task']),
+        direction: DismissDirection.endToStart,
+        onDismissed: (direction){
+          setState(() {
+            _todoItems.removeAt(index);
+            _saveToDoItems();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item Deleted'),
+          ));
+        },
+        background: Container(
+          color: Colors.red,
+          alignment: Alignment.centerRight,
+          child: Icon(Icons.delete),
+        ),
+        
+
+         child:Padding(
+           padding: const EdgeInsets.all(8.0),
+           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
-              color: _todoItems[index]['color'],
+              color: _todoItems[index]['color']
             ),
-            child: Row(
-              children: [
-                Text(_todoItems[index]['task']),
-                Spacer(),
-                IconButton(onPressed: ()=> _removeToDoitem(index),
-                 icon: Icon(Icons.delete))
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Text(_todoItems[index]['task']),
+                ],
+              ),
             ),
-          ),
-        );
+           ),
+         )
+         );
+              
       }),
       floatingActionButton: FloatingActionButton(onPressed: _promptAddItem,
       tooltip: 'Add Task',
